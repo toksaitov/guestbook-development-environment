@@ -1,0 +1,40 @@
+daemon off;
+
+pid run/nginx.pid;
+error_log log/nginx.error.log;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include nginx-mime.types;
+    access_log log/nginx.access.log;
+
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+
+    upstream guestbook {
+        server 127.0.0.1:${GUESTBOOK_SERVER_PORT};
+    }
+
+    server {
+        listen ${GUESTBOOK_PROXY_PORT};
+        gzip on;
+
+        root ../static;
+
+        location / {
+            try_files ${ENVSUBST_IGNORE}uri @guestbook;
+        }
+
+        location @guestbook {
+            proxy_pass http://guestbook;
+            proxy_set_header Host ${ENVSUBST_IGNORE}host;
+            proxy_set_header X-Real-IP ${ENVSUBST_IGNORE}remote_addr;
+            proxy_set_header X-Forwarded-For ${ENVSUBST_IGNORE}proxy_add_x_forwarded_for;
+        }
+    }
+}
+
